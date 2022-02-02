@@ -7,16 +7,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="style.css">
     <title>Minesweeper</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-weight: bold
+        }
+    </style>
 </head>
 
 
-<div id="canvas"></div>
-<script src="minesweeper.js"></script>
-<style>
-    * {
-        box-sizing: border-box;
-        font-weight: bold
-    }
-</style>
+<body>
+    <div class="center">
+        <h2>Minesweeper Game</h2>
+        <div id="canvas"></div>
+        <button id="restart">Restart</button>
+    </div>
+
+    <script src="minesweeper.js"></script>
+
+</body>
+
 
 </html>

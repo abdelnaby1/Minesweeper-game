@@ -2,18 +2,16 @@ let ROWS = 9;
 let COLS = 9;
 let SIZE = 24;
 let canvas = document.getElementById('canvas');
+let restartBtn = document.getElementById('restart');
 
 let cells = new Map();
-let revealedKeys = new Set();
+
+let failedBombKey;
+let revealedKeys;
+let flaggedKeys;
 //pass bombs to generate map;
-let map = generateMap(generateBombbs());
+let map;
 
-//values.set('0-0',1);
-//values.set('0-1',1); 
-//values.set('1-0',1); 
-//values.set('1-1',1); 
-
-//console.log(values)
 function toKey(row, col) {
     return row + '-' + col;
 }
@@ -30,8 +28,21 @@ function createButtons() {
             let cell = document.createElement('button');
             cell.style.width = SIZE + 'px';
             cell.style.height = SIZE + 'px';
+            cell.oncontextmenu = (e) => {
+                e.preventDefault();
+                toggleFlag(key);
+                updateButtons();
+            }
             cell.onclick = () => {
-                revealCell(key)
+                if (failedBombKey !== null) {
+                    return;
+                }
+                if (flaggedKeys.has(key)) {
+                    return
+                }
+                revealCell(key);
+                updateButtons();
+
             }
             canvas.appendChild(cell);
             cell.parentNode.style.display = 'flex';
@@ -41,51 +52,113 @@ function createButtons() {
             cells.set(key, cell);
         }
     }
+    restartBtn.onclick = startGame;
 }
-//console.log(cells)
+
+function startGame() {
+    failedBombKey = null;
+    revealedKeys = new Set();
+    flaggedKeys = new Set();
+    //pass bombs to generate map;
+    map = generateMap(generateBombbs());
+    if (cells) {
+        updateButtons();
+    } else {
+        cells = new Map();
+        createButtons();
+    }
+}
+
 function updateButtons() {
     for (let i = 0; i < ROWS; i++) {
         for (let j = 0; j < COLS; j++) {
             let key = toKey(i, j);
             let cell = cells.get(key);
 
-            if (revealedKeys.has(key)) {
+            cell.style.backgroundColor = '';
+            cell.style.color = 'black';
+            cell.textContent = '';
+            cell.disabled = false;
+            let value = map.get(key);
+            // console.log(value)
+            if (failedBombKey !== null && value === 'bomb') {
                 cell.disabled = true;
-                let value = map.get(key);
+                cell.textContent = '💣';
+                if (key === failedBombKey) {
+                    cell.style.background = 'red';
+                }
+
+            } else if (revealedKeys.has(key)) {
+                cell.disabled = true;
                 if (value === undefined) {
-                    cell.textContent = '';
+                    // cell.textContent = '';
                 } else if (value === 1) {
                     cell.textContent = '1';
                     cell.style.color = 'blue'
                 } else if (value === 2) {
                     cell.textContent = '2';
                     cell.style.color = 'green';
-                } else if (value === 3) {
-                    cell.textContent = '3';
+                } else if (value >= 3) {
+                    cell.textContent = value;
                     cell.style.color = 'red'
-                } else if (value === 'bomb') {
-                    cell.textContent = '💣'
-                    cell.style.background = 'red'
                 } else {
-                    throw Error("Todo");
+                    throw Error("should never happen");
                 }
-            } else {
-                cell.textContent = ''
+
+            } else if (flaggedKeys.has(key)) {
+                cell.textContent = '🚩'
             }
         }
     }
+    if (failedBombKey !== null) {
+        canvas.style.pointerEvents = 'none';
+        restartBtn.style.display = 'block';
+    } else {
+        canvas.style.pointerEvents = '';
+        restartBtn.style.display = '';
+    }
 }
 
+function toggleFlag(key) {
+    if (flaggedKeys.has(key)) {
+        flaggedKeys.delete(key);
+    } else {
+        flaggedKeys.add(key)
+    }
+}
+
+// function revealCells(key) {
+
+// }
+
 function revealCell(key) {
+    if (map.get(key) === 'bomb') {
+        failedBombKey = key
+    } else {
+
+        propagateReveal(key, new Set());
+    }
+}
+
+function propagateReveal(key, visited) {
     revealedKeys.add(key);
-    updateButtons();
+    visited.add(key);
+    let isEmpty = !map.has(key);
+    if (isEmpty) {
+        for (let neighborKey of getNeighbors(key)) {
+            if (!visited.has(neighborKey)) {
+                propagateReveal(neighborKey, visited);
+            }
+        }
+    }
+
 }
 
 function isInbounds([row, col]) {
     if (row < 0 || col < 0) {
         return false;
     }
-    if (row > ROWS || col > COLS) {
+    if (row >= ROWS || col >= COLS) {
         return false;
     }
     return true;
@@ -125,7 +198,7 @@ function generateBombbs() {
     return allKeys.slice(0, count);
 
 }
-generateBombbs();
+// generateBombbs();
 
 function generateMap(seedBombs) {
     let map = new Map();
@@ -143,12 +216,11 @@ function generateMap(seedBombs) {
     for (let key of seedBombs) {
         map.set(key, 'bomb');
         for (let neighborKey of getNeighbors(key)) {
-            // console.log(key, '=>', neighborKey)
             incrementDanger(neighborKey);
         }
     }
-    // console.log(map);
+    console.log(map);
     return map;
 }
-
 createButtons();
+startGame();
